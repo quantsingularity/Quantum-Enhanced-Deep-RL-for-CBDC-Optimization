@@ -1,0 +1,38 @@
+# Classical Soft Actor-Critic Configuration
+
+# Model Architecture
+actor_hidden_dims: [256, 256]
+critic_hidden_dims: [256, 256]
+activation: "relu" # relu, tanh, elu
+
+# SAC Hyperparameters
+learning_rate_actor: 3.0e-4
+learning_rate_critic: 3.0e-4
+learning_rate_alpha: 3.0e-4
+gamma: 0.99
+tau: 0.005
+batch_size: 256
+buffer_size: 1000000
+learning_starts: 10000
+gradient_steps: 1
+target_update_interval: 1
+
+# Entropy
+target_entropy: "auto" # auto or float
+initial_alpha: 1.0
+auto_entropy_tuning: true
+
+# Training
+train_freq: 1
+n_episodes_warmup: 10
+
+# Network Initialization
+weight_init: "orthogonal" # orthogonal, xavier_uniform, xavier_normal
+
+# Optimization
+optimizer: "adam" # adam, adamw
+grad_clip_norm: null # null or float
+weight_decay: 0.0
+
+# Model Save
+model_name: "sac_classical"

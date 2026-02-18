@@ -1,0 +1,115 @@
+name: CI Formatting Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  formatting_check:
+    runs-on: ubuntu-latest
+
+    env:
+      BACKEND_DIR: code
+
+    steps:
+      # -------------------------------
+      # Checkout repository
+      # -------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -------------------------------
+      # Python Setup + Caching
+      # -------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python formatters
+        run: pip install --upgrade pip && pip install autoflake==2.3.1 black==25.11.0
+
+      # -------------------------------
+      # Run Python formatting checks
+      # -------------------------------
+      - name: Run Python formatting checks (backend)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d "${{ env.BACKEND_DIR }}" ]; then
+            echo "Backend directory '${{ env.BACKEND_DIR }}' not found — skipping Python formatting."
+            exit 0
+          fi
+
+          echo "=== Preparing temporary copy of backend for autoflake ==="
+          TMP_COPY="$(mktemp -d)"
+          cp -a "${{ env.BACKEND_DIR }}/." "$TMP_COPY/"
+
+          echo "=== Running autoflake (will modify temp copy) ==="
+          autoflake \
+            --remove-all-unused-imports \
+            --remove-unused-variables \
+            --recursive \
+            --ignore-init-module-imports \
+            --in-place \
+            "$TMP_COPY"
+
+          echo "=== Comparing backend with autoflake-modified copy ==="
+          if ! diff -r "${{ env.BACKEND_DIR }}" "$TMP_COPY" > /dev/null; then
+            echo "autoflake found formatting/unused-imports issues in backend."
+            echo "Run: autoflake --remove-all-unused-imports --remove-unused-variables --recursive --ignore-init-module-imports --in-place ${BACKEND_DIR}"
+            rm -rf "$TMP_COPY"
+            exit 1
+          fi
+
+          rm -rf "$TMP_COPY"
+
+          echo "=== Running black (check mode) ==="
+          black "${{ env.BACKEND_DIR }}" --check
+
+      # -------------------------------
+      # Node Setup
+      # -------------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # -------------------------------
+      # Prettier checks (Markdown & YAML)
+      # -------------------------------
+      - name: Run Prettier Checks (all .md files in repo)
+        run: |
+          echo "=== Running Prettier (all .md files) ==="
+          # Using npx prettier@latest to ensure it runs without local install
+          npx prettier@latest --check "**/*.md" --ignore-path .prettierignore || {
+            echo "Prettier formatting issues detected in markdown files."
+            exit 1
+          }
+
+      - name: Run Prettier Checks (all YAML/YML files in repo)
+        run: |
+          echo "=== Running Prettier (all .yml and .yaml files) ==="
+          npx prettier@latest --check "**/*.{yml,yaml}" --ignore-path .prettierignore || {
+            echo "Prettier formatting issues detected in YAML/YML files."
+            exit 1
+          }
+
+      # -------------------------------
+      # Finalize
+      # -------------------------------
+      - name: Finalize Check
+        run: echo "All repository-wide formatting checks completed successfully."

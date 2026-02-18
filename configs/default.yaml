@@ -1,0 +1,38 @@
+# Default Configuration for CBDC Liquidity Management
+
+# Random Seeds
+seed: 42
+torch_seed: 42
+numpy_seed: 42
+
+# Logging
+log_dir: "logs"
+mlflow_tracking_uri: "logs/mlruns"
+experiment_name: "cbdc_liquidity_management"
+save_freq: 50000
+log_interval: 1000
+
+# Training
+n_total_steps: 1000000
+eval_freq: 10000
+n_eval_episodes: 100
+deterministic_eval: true
+
+# Hardware
+device: "auto" # auto, cuda, cpu
+n_workers: 4
+
+# Reproducibility
+deterministic_training: true
+benchmark_mode: false
+
+# Checkpointing
+save_best_model: true
+save_final_model: true
+checkpoint_dir: "logs/trained_models"
+
+# Results
+metrics_dir: "logs/metrics"
+plots_dir: "logs/plots"
+save_metrics_csv: true
+save_plots: true

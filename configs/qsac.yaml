@@ -1,0 +1,59 @@
+# Quantum-Enhanced Soft Actor-Critic Configuration
+
+# Classical Actor Architecture
+actor_hidden_dims: [256, 256]
+activation: "relu"
+
+# Quantum Critic Architecture
+critic_embedding_dim: 128
+n_qubits: 4
+n_vqc_layers: 2
+vqc_rotation_type: "RY" # RY, RX, RZ
+entanglement_type: "ring" # ring, full, linear
+measurement_type: "Z" # Z, Y, X
+quantum_output_dim: 64
+critic_output_dims: [128, 64]
+
+# Quantum Backend
+quantum_backend: "default.qubit" # default.qubit, lightning.qubit, qiskit.aer
+quantum_diff_method: "backprop" # backprop, parameter-shift, adjoint
+shots: null # null for exact, int for sampling
+
+# Noise Mitigation
+enable_noise: false
+noise_level: 0.01
+enable_zne: false # Zero Noise Extrapolation
+zne_scale_factors: [1.0, 1.5, 2.0]
+
+# SAC Hyperparameters
+learning_rate_actor: 3.0e-4
+learning_rate_critic: 1.0e-4 # Lower LR for quantum critic
+learning_rate_alpha: 3.0e-4
+gamma: 0.99
+tau: 0.005
+batch_size: 256
+buffer_size: 1000000
+learning_starts: 10000
+gradient_steps: 1
+target_update_interval: 1
+
+# Entropy
+target_entropy: "auto"
+initial_alpha: 1.0
+auto_entropy_tuning: true
+
+# Training
+train_freq: 1
+n_episodes_warmup: 10
+
+# Network Initialization
+weight_init: "orthogonal"
+quantum_weight_init: "uniform" # uniform, normal
+
+# Optimization
+optimizer: "adam"
+grad_clip_norm: 10.0 # Important for quantum gradients
+weight_decay: 0.0
+
+# Model Save
+model_name: "qsac_quantum"

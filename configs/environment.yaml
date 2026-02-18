@@ -1,0 +1,57 @@
+# CBDC Liquidity Environment Configuration
+
+# Initial Conditions
+initial_liquidity: 1000000.0 # Initial liquidity buffer
+initial_liabilities: 5000000.0 # Short-term liabilities
+initial_capital: 2000000.0 # Bank capital
+
+# Regulatory Constraints
+lcr_threshold: 1.0 # Liquidity Coverage Ratio (100%)
+capital_adequacy_ratio: 0.08 # 8% minimum
+max_borrow_fraction: 0.5 # Max borrowing as fraction of liabilities
+
+# Market Parameters
+base_funding_rate: 0.02 # Base interbank rate (annual)
+funding_rate_volatility: 0.01 # OU process volatility
+funding_rate_mean_reversion: 0.5 # OU mean reversion speed
+max_funding_rate: 0.10 # Maximum rate cap
+
+# Liquidity Dynamics (Geometric Brownian Motion)
+inflow_mean: 0.0001 # Mean drift per day
+inflow_volatility: 0.02
+outflow_mean: 0.0001
+outflow_volatility: 0.02
+
+# CBDC Shock (Jump-Diffusion)
+cbdc_shock_intensity: 0.3 # Max shock as fraction of deposits
+cbdc_jump_probability: 0.05 # Daily probability of CBDC shock
+cbdc_jump_mean: -0.1 # Mean jump size (negative = outflow)
+cbdc_jump_std: 0.05 # Jump size std
+
+# Market Volatility
+volatility_base: 0.01
+volatility_shock_multiplier: 3.0
+volatility_decay: 0.1 # Decay rate after shock
+
+# Time Parameters
+dt: 1.0 # Time step (1 day)
+max_episode_steps: 252 # Trading days per year
+
+# Reward Function Weights
+cost_weight: 1.0
+lcr_penalty_weight: 100.0
+shortfall_penalty_weight: 500.0
+stability_bonus_weight: 0.1
+
+# Action Space Bounds
+max_borrow: 2000000.0 # Maximum borrowing amount
+max_reallocation: 1.0 # Maximum reallocation ratio
+emergency_funding_cost_multiplier: 2.0 # Cost multiplier for emergency funding
+
+# Observation Normalization
+normalize_obs: true
+obs_clip: 10.0
+
+# Episode Termination
+terminate_on_bankruptcy: true
+bankruptcy_threshold: 0.0 # Liquidity < 0
