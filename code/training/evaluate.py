@@ -8,14 +8,16 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
-
 from env.cbdc_env import CBDCLiquidityEnv
 from models.sac_agent import SACAgent
+
+_ROOT = Path(__file__).resolve().parent.parent.parent
+_CONFIGS = _ROOT / "infrastructure" / "configs"
 
 
 def evaluate_model(
     model_path: str,
-    env_config_path: str = "configs/environment.yaml",
+    env_config_path: str = str(_CONFIGS / "environment.yaml"),
     n_episodes: int = 100,
     seed: int = 42,
     use_quantum: bool = False,
@@ -49,7 +51,7 @@ def evaluate_model(
     # Load agent
     if use_quantum:
         # Need to specify quantum config
-        with open("configs/qsac.yaml", "r") as f:
+        with open(str(_CONFIGS / "qsac.yaml"), "r") as f:
             qsac_config = yaml.safe_load(f)
 
         quantum_config = {

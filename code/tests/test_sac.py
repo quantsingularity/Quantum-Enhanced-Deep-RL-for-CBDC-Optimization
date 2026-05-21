@@ -5,7 +5,6 @@ Unit tests for SAC agent.
 import numpy as np
 import pytest
 import torch
-
 from models.sac_agent import SACAgent
 
 

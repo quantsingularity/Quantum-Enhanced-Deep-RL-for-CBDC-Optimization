@@ -1,6 +1,5 @@
 """
-Variational Quantum Circuit (VQC) for quantum critic.
-Implements parameterized quantum circuit with PennyLane.
+Variational Quantum Circuit (VQC) for quantum-enhanced critic.
 """
 
 from typing import List, Optional
@@ -13,13 +12,12 @@ import torch.nn as nn
 
 class VariationalQuantumCircuit(nn.Module):
     """
-    Variational Quantum Circuit for quantum-enhanced critic.
+    Variational Quantum Circuit with parameterized layers.
 
     Architecture:
-        1. Classical embedding layer
-        2. Angle encoding (RY rotations)
-        3. Parameterized variational layers (RY-RZ-CNOT)
-        4. Measurement (Pauli-Z expectation)
+        1. Angle encoding (RY/RX/RZ rotations on inputs)
+        2. Parameterized variational layers (RY + RZ per qubit, then entanglement)
+        3. Measurement — Pauli-Z expectation on each qubit
     """
 
     def __init__(
@@ -36,13 +34,13 @@ class VariationalQuantumCircuit(nn.Module):
         Initialize VQC.
 
         Args:
-            n_qubits: Number of qubits
-            n_layers: Number of variational layers
-            rotation_type: Type of rotation gate (RY, RX, RZ)
-            entanglement_type: Entanglement topology (ring, full, linear)
-            backend: PennyLane backend
-            diff_method: Differentiation method
-            shots: Number of shots (None for exact)
+            n_qubits: Number of qubits.
+            n_layers: Number of variational layers.
+            rotation_type: Encoding rotation gate ('RY', 'RX', 'RZ').
+            entanglement_type: Entanglement topology ('ring', 'full', 'linear').
+            backend: PennyLane device backend.
+            diff_method: Differentiation method for QNode.
+            shots: Measurement shots (None = exact statevector simulation).
         """
         super().__init__()
 
@@ -51,15 +49,12 @@ class VariationalQuantumCircuit(nn.Module):
         self.rotation_type = rotation_type
         self.entanglement_type = entanglement_type
 
-        # Create quantum device
         self.dev = qml.device(backend, wires=n_qubits, shots=shots)
 
-        # Number of parameters per layer
-        # Each layer: n_qubits rotations for each of 2 rotation gates
+        # Each layer: 2 rotations (RY + RZ) per qubit
         self.n_params_per_layer = n_qubits * 2
         self.total_params = self.n_params_per_layer * n_layers
 
-        # Create QNode
         self.qnode = qml.QNode(
             self._circuit,
             self.dev,
@@ -71,76 +66,68 @@ class VariationalQuantumCircuit(nn.Module):
         self,
         inputs: torch.Tensor,
         weights: torch.Tensor,
-    ) -> List[float]:
+    ) -> List[torch.Tensor]:
         """
-        Define quantum circuit.
+        Quantum circuit definition.
 
         Args:
-            inputs: Input features (size n_qubits)
-            weights: Variational parameters (size n_layers x n_qubits x 2)
+            inputs: Encoded features, shape (n_qubits,), values in [-π, π].
+            weights: Variational parameters, shape (n_layers, n_qubits, 2).
 
         Returns:
-            List of expectation values
+            List of Pauli-Z expectation tensors, one per qubit, values in [-1, 1].
         """
         # Angle encoding
         for i in range(self.n_qubits):
+            angle = inputs[i]
             if self.rotation_type == "RY":
-                qml.RY(inputs[i], wires=i)
+                qml.RY(angle, wires=i)
             elif self.rotation_type == "RX":
-                qml.RX(inputs[i], wires=i)
-            else:  # RZ
-                qml.RZ(inputs[i], wires=i)
+                qml.RX(angle, wires=i)
+            else:  # "RZ"
+                qml.RZ(angle, wires=i)
 
         # Variational layers
         for layer in range(self.n_layers):
-            # Parameterized rotations
             for i in range(self.n_qubits):
                 qml.RY(weights[layer, i, 0], wires=i)
                 qml.RZ(weights[layer, i, 1], wires=i)
-
-            # Entanglement
             self._apply_entanglement()
 
-        # Measurements
         return [qml.expval(qml.PauliZ(i)) for i in range(self.n_qubits)]
 
     def _apply_entanglement(self) -> None:
-        """Apply entanglement layer based on topology."""
+        """Apply CNOT entanglement gates according to topology."""
         if self.entanglement_type == "ring":
-            # Ring topology: each qubit connected to next (circular)
             for i in range(self.n_qubits):
                 qml.CNOT(wires=[i, (i + 1) % self.n_qubits])
-
         elif self.entanglement_type == "full":
-            # Full connectivity: all pairs
             for i in range(self.n_qubits):
                 for j in range(i + 1, self.n_qubits):
                     qml.CNOT(wires=[i, j])
-
         elif self.entanglement_type == "linear":
-            # Linear chain
             for i in range(self.n_qubits - 1):
                 qml.CNOT(wires=[i, i + 1])
         else:
-            raise ValueError(f"Unknown entanglement type: {self.entanglement_type}")
+            raise ValueError(
+                f"Unknown entanglement_type '{self.entanglement_type}'. "
+                "Choose from: 'ring', 'full', 'linear'."
+            )
 
     def forward(self, x: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass through VQC.
+        Batched forward pass through the VQC.
 
         Args:
-            x: Input tensor (batch_size, n_qubits)
-            weights: Variational weights (n_layers, n_qubits, 2)
+            x: Input tensor (batch_size, n_qubits), values in [-π, π].
+            weights: Variational weights (n_layers, n_qubits, 2).
 
         Returns:
-            Quantum measurements (batch_size, n_qubits)
+            Quantum measurements (batch_size, n_qubits), values in [-1, 1].
         """
         batch_size = x.shape[0]
-
-        # Process each sample in batch
         outputs = []
         for i in range(batch_size):
-            # Run circuit — qnode returns a list of scalar tensors
             result = self.qnode(x[i], weights)
             outputs.append(
                 torch.stack(
@@ -154,7 +141,6 @@ class VariationalQuantumCircuit(nn.Module):
                     ]
                 )
             )
-
         return torch.stack(outputs)
 
     def init_weights(self, method: str = "uniform") -> torch.Tensor:
@@ -162,52 +148,39 @@ class VariationalQuantumCircuit(nn.Module):
         Initialize variational weights.
 
         Args:
-            method: Initialization method (uniform, normal)
+            method: 'uniform' (random in [0, 2π]) or 'normal' (σ=0.1).
 
         Returns:
-            Initialized weights tensor
+            Weight tensor of shape (n_layers, n_qubits, 2).
         """
         if method == "uniform":
-            weights = (
-                torch.rand(
-                    self.n_layers,
-                    self.n_qubits,
-                    2,
-                    dtype=torch.float32,
-                )
+            return (
+                torch.rand(self.n_layers, self.n_qubits, 2, dtype=torch.float32)
                 * 2
                 * np.pi
             )
-        elif method == "normal":
-            weights = (
-                torch.randn(
-                    self.n_layers,
-                    self.n_qubits,
-                    2,
-                    dtype=torch.float32,
-                )
-                * 0.1
+        if method == "normal":
+            return (
+                torch.randn(self.n_layers, self.n_qubits, 2, dtype=torch.float32) * 0.1
             )
-        else:
-            raise ValueError(f"Unknown init method: {method}")
-
-        return weights
+        raise ValueError(
+            f"Unknown weight init method '{method}'. Use 'uniform' or 'normal'."
+        )
 
 
 class ZeroNoiseExtrapolation:
-    """Zero Noise Extrapolation for error mitigation."""
+    """Zero Noise Extrapolation (ZNE) for quantum error mitigation."""
 
-    def __init__(
-        self,
-        scale_factors: List[float] = [1.0, 1.5, 2.0],
-    ):
+    def __init__(self, scale_factors: Optional[List[float]] = None):
         """
         Initialize ZNE.
 
         Args:
-            scale_factors: Noise scaling factors
+            scale_factors: Noise scaling factors.  Defaults to [1.0, 1.5, 2.0].
         """
-        self.scale_factors = scale_factors
+        self.scale_factors: List[float] = (
+            scale_factors if scale_factors is not None else [1.0, 1.5, 2.0]
+        )
 
     def extrapolate(
         self,
@@ -216,44 +189,35 @@ class ZeroNoiseExtrapolation:
         weights: torch.Tensor,
     ) -> torch.Tensor:
         """
-        Apply ZNE to quantum circuit via Richardson extrapolation.
+        Apply ZNE via Richardson (quadratic Lagrange) extrapolation to scale=0.
+
+        Noise is approximated by scaling the variational weights.
 
         Args:
-            vqc: VQC instance
-            inputs: Input tensor
-            weights: VQC weights
+            vqc: VQC instance.
+            inputs: Input tensor (batch_size, n_qubits).
+            weights: VQC weights (n_layers, n_qubits, 2).
 
         Returns:
-            Extrapolated output (Richardson zero-noise estimate)
+            Zero-noise extrapolated output.
         """
-        results = []
-        for scale in self.scale_factors:
-            # Scale weights to approximate noise amplification
-            scaled_weights = weights * scale
-            result = vqc(inputs, scaled_weights)
-            results.append(result)
+        results = [vqc(inputs, weights * scale) for scale in self.scale_factors]
 
-        # Richardson extrapolation: fit polynomial and evaluate at scale=0
-        # For 3 scale factors [c1, c2, c3] with values [y1, y2, y3],
-        # use quadratic Richardson extrapolation
         if len(self.scale_factors) >= 3:
             c = self.scale_factors
             y = results
-            # Coefficients for extrapolation to scale=0
             denom = (c[0] - c[1]) * (c[0] - c[2]) * (c[1] - c[2])
             w0 = c[1] * c[2] * (c[1] - c[2]) / denom
             w1 = -c[0] * c[2] * (c[0] - c[2]) / denom
             w2 = c[0] * c[1] * (c[0] - c[1]) / denom
-            extrapolated = w0 * y[0] + w1 * y[1] + w2 * y[2]
-        else:
-            # Fallback: linear extrapolation
-            extrapolated = torch.stack(results).mean(dim=0)
+            return w0 * y[0] + w1 * y[1] + w2 * y[2]
 
-        return extrapolated
+        # Fallback: simple mean over scale factors
+        return torch.stack(results).mean(dim=0)
 
 
 class HybridQuantumClassical(nn.Module):
-    """Hybrid quantum-classical layer combining VQC with classical layers."""
+    """Hybrid quantum-classical layer combining a VQC with classical linear layers."""
 
     def __init__(
         self,
@@ -262,68 +226,62 @@ class HybridQuantumClassical(nn.Module):
         n_vqc_layers: int,
         output_dim: int,
         quantum_backend: str = "default.qubit",
+        entanglement_type: str = "ring",
         enable_zne: bool = False,
     ):
         """
         Initialize hybrid layer.
 
         Args:
-            input_dim: Input dimension
-            n_qubits: Number of qubits
-            n_vqc_layers: Number of VQC layers
-            output_dim: Output dimension
-            quantum_backend: Quantum backend
-            enable_zne: Enable Zero Noise Extrapolation
+            input_dim: Input feature dimension.
+            n_qubits: Number of qubits.
+            n_vqc_layers: Number of variational layers.
+            output_dim: Classical post-processing output dimension.
+            quantum_backend: PennyLane backend string.
+            entanglement_type: Entanglement topology for the VQC.
+            enable_zne: Enable Zero Noise Extrapolation.
         """
         super().__init__()
 
-        self.input_dim = input_dim
         self.n_qubits = n_qubits
-        self.output_dim = output_dim
         self.enable_zne = enable_zne
 
-        # Classical embedding: map input to quantum state
+        # Classical pre-processing: embed inputs into qubit angle space
         self.embedding = nn.Linear(input_dim, n_qubits)
 
-        # VQC
+        # Variational Quantum Circuit
         self.vqc = VariationalQuantumCircuit(
             n_qubits=n_qubits,
             n_layers=n_vqc_layers,
             backend=quantum_backend,
+            entanglement_type=entanglement_type,
         )
 
-        # VQC weights as learnable parameters
-        vqc_weights = self.vqc.init_weights(method="uniform")
-        self.vqc_weights = nn.Parameter(vqc_weights)
+        # VQC weights as learnable nn.Parameter
+        self.vqc_weights = nn.Parameter(self.vqc.init_weights(method="uniform"))
 
         # Classical post-processing
         self.post_processing = nn.Linear(n_qubits, output_dim)
 
-        # ZNE if enabled
         if enable_zne:
             self.zne = ZeroNoiseExtrapolation()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass.
+        Forward pass through the hybrid layer.
 
         Args:
-            x: Input tensor (batch_size, input_dim)
+            x: Input tensor (batch_size, input_dim).
 
         Returns:
-            Output tensor (batch_size, output_dim)
+            Output tensor (batch_size, output_dim).
         """
-        # Classical embedding
-        embedded = torch.tanh(self.embedding(x))  # Scale to [-1, 1]
-        embedded = embedded * np.pi  # Scale to [-pi, pi]
+        # Embed to qubit angle space in [-π, π]
+        embedded = torch.tanh(self.embedding(x)) * np.pi
 
-        # Quantum processing
         if self.enable_zne:
             quantum_out = self.zne.extrapolate(self.vqc, embedded, self.vqc_weights)
         else:
             quantum_out = self.vqc(embedded, self.vqc_weights)
 
-        # Classical post-processing
-        output = self.post_processing(quantum_out)
-
-        return output
+        return self.post_processing(quantum_out)

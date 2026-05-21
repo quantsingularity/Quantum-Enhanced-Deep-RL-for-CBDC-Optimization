@@ -1,3 +1,4 @@
+from pathlib import Path
 from setuptools import find_packages, setup
 
 setup(
@@ -6,7 +7,7 @@ setup(
     author="Abrar Ahmed",
     author_email="research@example.com",
     description="Quantum-Enhanced Deep RL for CBDC Liquidity Management",
-    long_description=open("README.md").read(),
+    long_description=open(Path(__file__).resolve().parent.parent / "README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/quantum_cbdc_liquidity",
     packages=find_packages(),

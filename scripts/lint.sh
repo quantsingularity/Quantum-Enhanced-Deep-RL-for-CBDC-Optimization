@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 # lint.sh
 # -------
-# Run from the project root. Asks for a directory, then runs
-# ruff, flake8, mypy, and pylint against it.
+# Run from the project root or from scripts/.
+# Lints the target directory with ruff, flake8, mypy, and pylint.
 
-# ── enable ** glob for bash ───────────────────────────────────────────────────
 shopt -s globstar 2>/dev/null
+
+# ── resolve project root ──────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ── prompt ────────────────────────────────────────────────────────────────────
 echo ""
-echo "Available directories:"
-ls -d */ 2>/dev/null
+echo "Available directories under code/:"
+ls -d "$PROJECT_ROOT/code"/*/  2>/dev/null | xargs -I{} basename {}
 echo ""
-read -rp "Enter directory to lint (or '.' for entire project): " TARGET
+read -rp "Enter sub-directory to lint (relative to code/, or '.' for all of code/): " TARGET_REL
+
+TARGET="$PROJECT_ROOT/code/${TARGET_REL}"
 
 # ── validate ──────────────────────────────────────────────────────────────────
-if [[ -z "$TARGET" ]]; then
+if [[ -z "$TARGET_REL" ]]; then
     echo "Error: no directory entered."
     exit 1
 fi
@@ -25,7 +30,6 @@ if [[ ! -d "$TARGET" ]]; then
     exit 1
 fi
 
-# Check there are actually Python files to lint
 PY_FILES=$(find "$TARGET" -name "*.py" | head -1)
 if [[ -z "$PY_FILES" ]]; then
     echo "No Python files found in '$TARGET'."

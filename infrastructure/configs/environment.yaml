@@ -1,0 +1,46 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CBDC environment configuration
+# Keys here are forwarded to CBDCLiquidityEnv as **kwargs.
+# Explicit constructor args (initial_liquidity, lcr_threshold, …) take
+# precedence and must NOT be duplicated here.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Time step (days)
+dt: 1.0
+
+# Observation clipping (normalized space)
+obs_clip: 10.0
+
+# Emergency funding cost multiplier
+emergency_funding_cost_multiplier: 2.0
+
+# Liquidity dynamics (GBM parameters)
+inflow_mean: 0.0001
+inflow_volatility: 0.02
+outflow_mean: 0.0001
+outflow_volatility: 0.02
+
+# CBDC shock (jump-diffusion)
+cbdc_jump_probability: 0.05
+cbdc_jump_mean: -0.1
+cbdc_jump_std: 0.05
+
+# Funding rate (Ornstein-Uhlenbeck)
+base_funding_rate: 0.02
+funding_rate_volatility: 0.01
+funding_rate_mean_reversion: 0.5
+
+# Market volatility
+volatility_base: 0.01
+volatility_shock_multiplier: 3.0
+volatility_decay: 0.1
+
+# Regulatory constraints
+capital_adequacy_ratio: 0.08
+max_borrow_fraction: 0.5
+
+# Reward weights
+cost_weight: 1.0
+lcr_penalty_weight: 100.0
+shortfall_penalty_weight: 500.0
+stability_bonus_weight: 0.1

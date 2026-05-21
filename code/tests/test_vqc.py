@@ -5,7 +5,6 @@ Unit tests for Variational Quantum Circuit.
 import numpy as np
 import pytest
 import torch
-
 from models.vqc import HybridQuantumClassical, VariationalQuantumCircuit
 
 

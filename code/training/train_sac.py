@@ -8,17 +8,19 @@ import mlflow
 import numpy as np
 import torch
 import yaml
-from tqdm import tqdm
-
 from env.cbdc_env import CBDCLiquidityEnv
 from models.sac_agent import SACAgent
+from tqdm import tqdm
 from training.replay_buffer import ReplayBuffer
+
+_ROOT = Path(__file__).resolve().parent.parent.parent
+_CONFIGS = _ROOT / "infrastructure" / "configs"
 
 
 def train_sac(
-    config_path: str = "configs/sac.yaml",
-    env_config_path: str = "configs/environment.yaml",
-    default_config_path: str = "configs/default.yaml",
+    config_path: str = str(_CONFIGS / "sac.yaml"),
+    env_config_path: str = str(_CONFIGS / "environment.yaml"),
+    default_config_path: str = str(_CONFIGS / "default.yaml"),
     n_steps: int = 1000000,
     eval_freq: int = 10000,
     n_eval_episodes: int = 100,

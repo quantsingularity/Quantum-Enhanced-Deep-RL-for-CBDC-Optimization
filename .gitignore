@@ -1,7 +1,8 @@
 # ===============================================================
-# .gitignore
+# .gitignore — Quantum-Enhanced Deep RL for CBDC Optimization
 # ===============================================================
-# General
+
+# ── General ──────────────────────────────────────────────────────────────────
 *.log
 *.tmp
 *.swp
@@ -9,26 +10,24 @@
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# ── Environment variables ─────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
 
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Python Virtual Environment
+# Virtual environments
 venv/
 ENV/
-env/
+.venv/
 */venv/
 */ENV/
-*/env/
-.venv
 
-# Python Distribution / Installation
+# Distribution / packaging
 .Python
 build/
 dist/
@@ -43,16 +42,16 @@ MANIFEST
 *.manifest
 *.spec
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
 
-# Unit test / coverage reports
+# ── Testing & coverage ────────────────────────────────────────────────────────
 htmlcov/
 .tox/
 .nox/
 .coverage
 .coverage.*
-.cache
+.cache/
 nosetests.xml
 coverage.xml
 *.cover
@@ -60,17 +59,13 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Flask specific
-instance/
-.webassets-cache
+# ── Type checkers ─────────────────────────────────────────────────────────────
+.mypy_cache/
 
-# Celery stuff
-celerybeat-schedule.*
+# ── Linters ───────────────────────────────────────────────────────────────────
+.ruff_cache/
 
-# SageMath files
-*.sage.py
-
-# Compiled/Build files
+# ── Build / compiled artefacts ────────────────────────────────────────────────
 /build/
 /dist/
 /out/
@@ -84,10 +79,23 @@ celerybeat-schedule.*
 *.class
 *.pyc
 *.whl
-*.egg
 
-# Type checker cache
-.mypy_cache/
+# ── Project-specific ─────────────────────────────────────────────────────────
+# MLflow experiment tracking
+mlruns/
 
-# Ruff cache
-.ruff_cache/
+# Training outputs (logs, checkpoints, plots)
+logs/
+
+# Trained model weights
+*.pt
+*.pth
+*.ckpt
+
+# Hydra output directories
+outputs/
+multirun/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.docker/
+docker-compose.override.yml

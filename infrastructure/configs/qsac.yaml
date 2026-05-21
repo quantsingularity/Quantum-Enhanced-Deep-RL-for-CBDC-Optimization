@@ -1,0 +1,28 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Quantum-Enhanced SAC (QSAC) configuration
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Training
+learning_rate_actor: 0.0003
+learning_rate_critic: 0.0003
+learning_rate_alpha: 0.0003
+gamma: 0.99
+tau: 0.005
+batch_size: 64 # Smaller batch — quantum forward passes are expensive
+buffer_size: 1000000
+gradient_steps: 1
+learning_starts: 10000
+auto_entropy_tuning: true
+
+# Actor architecture (classical MLP)
+actor_hidden_dims: [256, 256]
+
+# Critic architecture (quantum)
+critic_embedding_dim: 128
+n_qubits: 4
+n_vqc_layers: 2
+quantum_output_dim: 64
+critic_output_dims: [128, 64]
+quantum_backend: "default.qubit"
+entanglement_type: "ring" # "ring" | "full" | "linear"
+enable_zne: false

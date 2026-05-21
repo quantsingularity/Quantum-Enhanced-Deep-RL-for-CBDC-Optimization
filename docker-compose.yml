@@ -1,0 +1,144 @@
+# ==============================================================================
+# Docker Compose — Quantum CBDC Liquidity Optimization
+# ==============================================================================
+# Services:
+#   app       – training / evaluation container
+#   mlflow    – MLflow tracking server (UI at http://localhost:5000)
+#   tests     – one-shot test runner (exits after completion)
+# ==============================================================================
+
+services:
+  # ── Application (training & evaluation) ─────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: quantum-cbdc:latest
+    container_name: quantum_cbdc_app
+    environment:
+      - PYTHONPATH=/app/code
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      # Persist logs and trained models between runs
+      - ./logs:/app/logs
+      - ./mlruns:/app/mlruns
+    ports:
+      - "5001:5001" # Reserved for future dashboard / REST API
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - cbdc_net
+    # Default: run full experimental suite
+    command: >
+      bash -c "PYTHONPATH=code python code/experiments/run_all_experiments.py"
+    restart: "no"
+
+  # ── MLflow tracking server ───────────────────────────────────────────────────
+  mlflow:
+    image: python:3.11-slim
+    container_name: quantum_cbdc_mlflow
+    working_dir: /mlflow
+    environment:
+      - MLFLOW_HOST=0.0.0.0
+      - MLFLOW_PORT=5000
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+    ports:
+      - "5000:5000"
+    networks:
+      - cbdc_net
+    # Install MLflow then start the tracking server
+    command: >
+      bash -c "pip install mlflow --quiet &&
+               mlflow server
+                 --host 0.0.0.0
+                 --port 5000
+                 --backend-store-uri file:///mlflow/mlruns
+                 --default-artifact-root file:///mlflow/mlruns"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Test runner (one-shot) ───────────────────────────────────────────────────
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: quantum-cbdc:latest
+    container_name: quantum_cbdc_tests
+    environment:
+      - PYTHONPATH=/app/code
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - cbdc_net
+    command: >
+      bash -c "pytest code/tests/ -v --tb=short --cov=code --cov-report=term-missing"
+    restart: "no"
+    profiles:
+      - test # Only started when: docker compose --profile test up tests
+
+  # ── Classical SAC training ───────────────────────────────────────────────────
+  train-sac:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: quantum-cbdc:latest
+    container_name: quantum_cbdc_train_sac
+    environment:
+      - PYTHONPATH=/app/code
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./logs:/app/logs
+      - ./mlruns:/app/mlruns
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - cbdc_net
+    command: >
+      bash -c "PYTHONPATH=code python code/training/train_sac.py"
+    restart: "no"
+    profiles:
+      - train-sac
+
+  # ── Quantum SAC training ─────────────────────────────────────────────────────
+  train-qsac:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: quantum-cbdc:latest
+    container_name: quantum_cbdc_train_qsac
+    environment:
+      - PYTHONPATH=/app/code
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./logs:/app/logs
+      - ./mlruns:/app/mlruns
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - cbdc_net
+    command: >
+      bash -c "PYTHONPATH=code python code/training/train_qsac.py"
+    restart: "no"
+    profiles:
+      - train-qsac
+
+networks:
+  cbdc_net:
+    driver: bridge
+
+volumes:
+  logs:
+  mlruns:

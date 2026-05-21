@@ -9,7 +9,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from models.actor import Actor
 from models.critic_classical import Critic
 from models.critic_quantum import QuantumCritic
@@ -100,21 +99,16 @@ class SACAgent:
 
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr_critic)
 
-        # Target critic
+        # Target critic (frozen copy)
         self.critic_target = deepcopy(self.critic)
-
-        # Freeze target network
         for param in self.critic_target.parameters():
             param.requires_grad = False
 
         # Entropy temperature
         if auto_entropy_tuning:
-            if target_entropy is None:
-                # Heuristic: -dim(A)
-                self.target_entropy = -action_dim
-            else:
-                self.target_entropy = target_entropy
-
+            self.target_entropy = (
+                float(-action_dim) if target_entropy is None else target_entropy
+            )
             self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
             self.alpha = self.log_alpha.exp().item()
             self.alpha_optimizer = optim.Adam([self.log_alpha], lr=lr_alpha)
@@ -122,6 +116,7 @@ class SACAgent:
             self.alpha = alpha
             self.target_entropy = None
             self.log_alpha = None
+            self.alpha_optimizer = None  # type: ignore[assignment]
 
     def select_action(
         self,
@@ -164,60 +159,44 @@ class SACAgent:
         Returns:
             Dictionary of losses
         """
-        # Move to device
         states = states.to(self.device)
         actions = actions.to(self.device)
         rewards = rewards.to(self.device)
         next_states = next_states.to(self.device)
         dones = dones.to(self.device)
 
-        # Update critic
+        # ── Critic update ────────────────────────────────────────────────────
         with torch.no_grad():
-            # Sample action from current policy
             next_actions, next_log_probs = self.actor(next_states)
-
-            # Compute target Q-value
             target_q1, target_q2 = self.critic_target(next_states, next_actions)
-            target_q = torch.min(target_q1, target_q2)
-            target_q = target_q - self.alpha * next_log_probs
-
-            # Bellman backup
+            target_q = torch.min(target_q1, target_q2) - self.alpha * next_log_probs
             target_value = rewards + (1 - dones) * self.gamma * target_q
 
-        # Current Q-values
         current_q1, current_q2 = self.critic(states, actions)
-
-        # Critic loss (MSE)
         critic_loss = nn.MSELoss()(current_q1, target_value) + nn.MSELoss()(
             current_q2, target_value
         )
 
-        # Update critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-
-        # Gradient clipping for stability (especially for quantum)
         if self.use_quantum_critic:
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=10.0)
-
         self.critic_optimizer.step()
 
-        # Update actor
+        # ── Actor update ─────────────────────────────────────────────────────
         new_actions, log_probs = self.actor(states)
         q1_new, q2_new = self.critic(states, new_actions)
         q_new = torch.min(q1_new, q2_new)
 
-        # Actor loss
         actor_loss = (self.alpha * log_probs - q_new).mean()
 
-        # Update actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        # Update temperature
-        alpha_loss = torch.tensor(0.0)
-        if self.auto_entropy_tuning:
+        # ── Temperature update ───────────────────────────────────────────────
+        alpha_loss = torch.tensor(0.0, device=self.device)
+        if self.auto_entropy_tuning and self.log_alpha is not None:
             alpha_loss = -(
                 self.log_alpha * (log_probs + self.target_entropy).detach()
             ).mean()
@@ -228,7 +207,7 @@ class SACAgent:
 
             self.alpha = self.log_alpha.exp().item()
 
-        # Update target networks (Polyak averaging)
+        # ── Polyak update ────────────────────────────────────────────────────
         self._update_target_network()
 
         return {
@@ -240,7 +219,7 @@ class SACAgent:
             "log_prob": log_probs.mean().item(),
         }
 
-    def _update_target_network(self):
+    def _update_target_network(self) -> None:
         """Update target network using Polyak averaging."""
         for param, target_param in zip(
             self.critic.parameters(), self.critic_target.parameters()
@@ -249,9 +228,8 @@ class SACAgent:
                 self.tau * param.data + (1 - self.tau) * target_param.data
             )
 
-    def save(self, path: str):
-        """Save agent to file."""
-
+    def save(self, path: str) -> None:
+        """Save agent checkpoint to file."""
         checkpoint = {
             "actor_state_dict": self.actor.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
@@ -270,15 +248,32 @@ class SACAgent:
 
     @classmethod
     def load(
-        cls, path: str, state_dim: int, action_dim: int, device: str = "cpu", **kwargs
-    ):
-        """Load agent from file."""
-        checkpoint = torch.load(path, map_location=device)
+        cls,
+        path: str,
+        state_dim: int,
+        action_dim: int,
+        device: str = "cpu",
+        **kwargs,
+    ) -> "SACAgent":
+        """
+        Load agent from a checkpoint file.
 
-        # Create agent
+        Args:
+            path: Path to checkpoint
+            state_dim: State space dimension
+            action_dim: Action space dimension
+            device: Target device
+            **kwargs: Additional constructor arguments
+
+        Returns:
+            Loaded SACAgent
+        """
+        # weights_only=False is required because the checkpoint contains
+        # optimizer state dicts and Python scalars, not only tensors.
+        checkpoint = torch.load(path, map_location=device, weights_only=False)
+
         agent = cls(state_dim=state_dim, action_dim=action_dim, device=device, **kwargs)
 
-        # Load state dicts
         agent.actor.load_state_dict(checkpoint["actor_state_dict"])
         agent.critic.load_state_dict(checkpoint["critic_state_dict"])
         agent.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
@@ -288,12 +283,13 @@ class SACAgent:
         )
 
         if agent.auto_entropy_tuning and "log_alpha_value" in checkpoint:
+            # Recreate log_alpha tensor and re-bind the optimizer to it
             agent.log_alpha = torch.tensor(
                 [checkpoint["log_alpha_value"]], requires_grad=True, device=device
             )
             agent.alpha = float(torch.exp(agent.log_alpha).item())
+            agent.alpha_optimizer = optim.Adam([agent.log_alpha], lr=3e-4)
             if "alpha_optimizer_state_dict" in checkpoint:
-                agent.alpha_optimizer = torch.optim.Adam([agent.log_alpha], lr=3e-4)
                 agent.alpha_optimizer.load_state_dict(
                     checkpoint["alpha_optimizer_state_dict"]
                 )

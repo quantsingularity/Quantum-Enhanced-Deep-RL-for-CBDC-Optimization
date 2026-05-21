@@ -2,9 +2,14 @@
 Rule-based baseline policy for liquidity management.
 """
 
-import numpy as np
+from pathlib import Path
 
+import numpy as np
+import yaml
 from env.cbdc_env import CBDCLiquidityEnv
+
+_ROOT = Path(__file__).resolve().parent.parent.parent
+_CONFIGS = _ROOT / "infrastructure" / "configs"
 
 
 class RuleBasedPolicy:
@@ -50,12 +55,11 @@ class RuleBasedPolicy:
         Returns:
             Action array [borrow_normalized, reallocation_ratio, emergency_flag]
         """
-
         scales = np.array([1e6, 1e6, 1e5, 1e5, 0.1, 1e6, 0.1, 1.0])
         state_denorm = state * scales
 
         liquidity = state_denorm[0]
-        state_denorm[1]
+        liabilities = state_denorm[1]  # noqa: F841  (kept for readability)
         proj_inflow = state_denorm[2]
         proj_outflow = state_denorm[3]
 
@@ -71,18 +75,15 @@ class RuleBasedPolicy:
         # Compute borrow amount
         borrow_normalized = 0.0
         if current_lcr < self.lcr_target:
-            # Need to borrow
             deficit = (self.lcr_target - current_lcr) * net_outflow
             borrow_amount = deficit * self.borrow_scale
-
-            # Normalize to [0, 1]
             borrow_normalized = min(1.0, borrow_amount / env.max_borrow)
 
-        # Reallocation strategy: moderate when LCR is low
+        # Reallocation strategy: more aggressive when LCR is low
         if current_lcr < self.lcr_critical:
-            reallocation_ratio = 0.3  # Increase liquidity buffer
+            reallocation_ratio = 0.3
         else:
-            reallocation_ratio = 0.1  # Minimal reallocation
+            reallocation_ratio = 0.1
 
         action = np.array(
             [borrow_normalized, reallocation_ratio, emergency_flag],
@@ -143,16 +144,11 @@ def evaluate_rule_based(
 
 
 if __name__ == "__main__":
-    import yaml
-
-    # Load environment config
-    with open("configs/environment.yaml", "r") as f:
+    with open(str(_CONFIGS / "environment.yaml"), "r") as f:
         env_config = yaml.safe_load(f)
 
-    # Create environment
     env = CBDCLiquidityEnv(seed=42, **env_config)
 
-    # Evaluate
     print("Evaluating rule-based policy...")
     metrics = evaluate_rule_based(env, n_episodes=100)
 

@@ -1,24 +1,36 @@
 """
 Statistical tests for comparing QSAC, Classical SAC, and Rule-based methods.
+
+Run from project root:
+    PYTHONPATH=code python code/experiments/statistical_tests.py
 """
 
-import os
+# ── sys.path bootstrap (must come before local imports) ───────────────────────
 import sys
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent.parent
+_CONFIGS = _ROOT / "infrastructure" / "configs"
+
+_code_dir = str(_ROOT / "code")
+if _code_dir not in sys.path:
+    sys.path.insert(0, _code_dir)
+
+# ── Third-party imports ───────────────────────────────────────────────────────
 from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import torch
 import yaml
-from scipy import stats
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+# ── Local imports ─────────────────────────────────────────────────────────────
 from baselines.rule_based_policy import RuleBasedPolicy
 from env.cbdc_env import CBDCLiquidityEnv
 from models.sac_agent import SACAgent
+from scipy import stats
 
 
 def collect_episode_data(agent, env, n_episodes: int = 100, use_quantum: bool = False):
@@ -159,14 +171,14 @@ def run_statistical_tests():
     print("=" * 80)
 
     # Load configs
-    with open("configs/environment.yaml", "r") as f:
+    with open(str(_CONFIGS / "environment.yaml"), "r") as f:
         env_config = yaml.safe_load(f)
 
-    with open("configs/default.yaml", "r") as f:
+    with open(str(_CONFIGS / "default.yaml"), "r") as f:
         default_config = yaml.safe_load(f)
 
     seed = default_config["seed"]
-    device = "cuda" if os.path.exists("/dev/nvidia0") else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Create directories
     results_dir = Path("logs/statistical_tests")
@@ -203,8 +215,11 @@ def run_statistical_tests():
     if (models_dir / "qsac_final.pt").exists():
         print("Collecting Quantum SAC data...")
         env = CBDCLiquidityEnv(seed=seed + 1, **env_config)
+        # Derive dims from the env directly so we don't depend on the SAC block
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.shape[0]
 
-        with open("configs/qsac.yaml", "r") as f:
+        with open(str(_CONFIGS / "qsac.yaml"), "r") as f:
             qsac_config = yaml.safe_load(f)
 
         quantum_config = {
