@@ -17,7 +17,7 @@ class VariationalQuantumCircuit(nn.Module):
     Architecture:
         1. Angle encoding (RY/RX/RZ rotations on inputs)
         2. Parameterized variational layers (RY + RZ per qubit, then entanglement)
-        3. Measurement — Pauli-Z expectation on each qubit
+        3. Measurement: Pauli-Z expectation on each qubit
     """
 
     def __init__(
@@ -283,5 +283,9 @@ class HybridQuantumClassical(nn.Module):
             quantum_out = self.zne.extrapolate(self.vqc, embedded, self.vqc_weights)
         else:
             quantum_out = self.vqc(embedded, self.vqc_weights)
+
+        # PennyLane returns float64 expectation values; cast back to the
+        # classical layer's dtype before post-processing.
+        quantum_out = quantum_out.to(self.post_processing.weight.dtype)
 
         return self.post_processing(quantum_out)

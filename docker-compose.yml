@@ -1,5 +1,5 @@
 # ==============================================================================
-# Docker Compose — Quantum CBDC Liquidity Optimization
+# Docker Compose: Quantum CBDC Liquidity Optimization
 # ==============================================================================
 # Services:
 #   app       – training / evaluation container

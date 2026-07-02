@@ -37,14 +37,14 @@ def run_ablation_studies() -> dict:
 
     Studies
     -------
-    1. Full Quantum (Baseline)  — 4 qubits, 2 layers, ring entanglement
-    2. Reduced Qubits           — 2 qubits, 2 layers, ring entanglement
-    3. Reduced Layers           — 4 qubits, 1 layer,  ring entanglement
-    4. No Entanglement          — 4 qubits, 2 layers, linear (no CNOT loops)
-    5. Classical Only           — standard MLP critic, no quantum layer
+    1. Full Quantum (Baseline) : 4 qubits, 2 layers, ring entanglement
+    2. Reduced Qubits          : 2 qubits, 2 layers, ring entanglement
+    3. Reduced Layers          : 4 qubits, 1 layer,  ring entanglement
+    4. No Entanglement         : 4 qubits, 2 layers, linear (no CNOT loops)
+    5. Classical Only          : standard MLP critic, no quantum layer
     """
     print("=" * 80)
-    print("Ablation Studies — Quantum Critic")
+    print("Ablation Studies: Quantum Critic")
     print("=" * 80)
 
     with open(str(_CONFIGS / "qsac.yaml")) as f:
@@ -260,7 +260,7 @@ def generate_ablation_plots(df: pd.DataFrame, results_dir: Path) -> None:
     fig, ax = plt.subplots(figsize=(12, max(4, n * 1.2)))
     ax.barh(configs, df["mean_reward"], color=palette, alpha=0.8)
     ax.set_xlabel("Mean Reward", fontsize=12)
-    ax.set_title("Ablation — Mean Reward", fontsize=14, fontweight="bold")
+    ax.set_title("Ablation: Mean Reward", fontsize=14, fontweight="bold")
     ax.grid(axis="x", alpha=0.3)
     plt.tight_layout()
     plt.savefig(results_dir / "ablation_reward.png", dpi=300)
@@ -271,7 +271,7 @@ def generate_ablation_plots(df: pd.DataFrame, results_dir: Path) -> None:
     fig, ax = plt.subplots(figsize=(12, max(4, n * 1.2)))
     ax.barh(configs, df["mean_funding_cost"], color=palette, alpha=0.8)
     ax.set_xlabel("Mean Funding Cost ($)", fontsize=12)
-    ax.set_title("Ablation — Funding Cost", fontsize=14, fontweight="bold")
+    ax.set_title("Ablation: Funding Cost", fontsize=14, fontweight="bold")
     ax.grid(axis="x", alpha=0.3)
     plt.tight_layout()
     plt.savefig(results_dir / "ablation_cost.png", dpi=300)
@@ -299,7 +299,7 @@ def generate_ablation_plots(df: pd.DataFrame, results_dir: Path) -> None:
             ax=ax,
             cbar_kws={"label": "Normalized Score"},
         )
-        ax.set_title("Ablation — Multi-Metric Heatmap", fontsize=14, fontweight="bold")
+        ax.set_title("Ablation: Multi-Metric Heatmap", fontsize=14, fontweight="bold")
         ax.set_ylabel("")
         plt.tight_layout()
         plt.savefig(results_dir / "ablation_heatmap.png", dpi=300)

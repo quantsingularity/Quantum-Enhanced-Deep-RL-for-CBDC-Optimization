@@ -8,7 +8,7 @@ learning_rate_critic: 0.0003
 learning_rate_alpha: 0.0003
 gamma: 0.99
 tau: 0.005
-batch_size: 64 # Smaller batch — quantum forward passes are expensive
+batch_size: 64 # Smaller batch: quantum forward passes are expensive
 buffer_size: 1000000
 gradient_steps: 1
 learning_starts: 10000

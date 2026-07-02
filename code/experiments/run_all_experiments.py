@@ -37,7 +37,7 @@ def run_all_experiments() -> dict:
     """Run complete experimental suite and return results dict."""
 
     print("=" * 80)
-    print("CBDC Liquidity Management — Full Experimental Suite")
+    print("CBDC Liquidity Management: Full Experimental Suite")
     print("=" * 80)
 
     log_dir = Path("logs")
@@ -71,7 +71,7 @@ def run_all_experiments() -> dict:
             n_eval_episodes=default_config["n_eval_episodes"],
         )
     else:
-        print("Classical SAC model found — skipping training.")
+        print("Classical SAC model found: skipping training.")
 
     if (models_dir / "sac_final.pt").exists():
         env = CBDCLiquidityEnv(seed=seed, **env_config)
@@ -92,7 +92,7 @@ def run_all_experiments() -> dict:
         for k, v in sac_metrics.items():
             print(f"  {k}: {v:.4f}")
     else:
-        print("Classical SAC model not found — skipping evaluation.")
+        print("Classical SAC model not found: skipping evaluation.")
         state_dim = 8  # env defaults
         action_dim = 3
 
@@ -108,7 +108,7 @@ def run_all_experiments() -> dict:
             n_eval_episodes=default_config["n_eval_episodes"],
         )
     else:
-        print("Quantum SAC model found — skipping training.")
+        print("Quantum SAC model found: skipping training.")
 
     if (models_dir / "qsac_final.pt").exists():
         env = CBDCLiquidityEnv(seed=seed + 1, **env_config)
@@ -145,7 +145,7 @@ def run_all_experiments() -> dict:
         for k, v in qsac_metrics.items():
             print(f"  {k}: {v:.4f}")
     else:
-        print("Quantum SAC model not found — skipping evaluation.")
+        print("Quantum SAC model not found: skipping evaluation.")
 
     # ── 3. Rule-based baseline ────────────────────────────────────────────────
     print("\n" + "=" * 80)

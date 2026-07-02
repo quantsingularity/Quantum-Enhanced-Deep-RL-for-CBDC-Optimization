@@ -1,5 +1,5 @@
 """
-pytest configuration — adds code/ to sys.path so all test modules
+pytest configuration: adds code/ to sys.path so all test modules
 can import project packages (env, models, training, baselines, experiments)
 without requiring PYTHONPATH to be set externally.
 """
