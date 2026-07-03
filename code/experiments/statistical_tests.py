@@ -22,7 +22,27 @@ from typing import Dict
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+
+try:
+    import seaborn as sns
+
+    _HAS_SEABORN = True
+except Exception:  # missing seaborn, or seaborn too old for this matplotlib
+    sns = None
+    _HAS_SEABORN = False
+
+
+def _require_seaborn():
+    """Raise a clear error when a seaborn-based plot is requested."""
+    if not _HAS_SEABORN:
+        raise ImportError(
+            "seaborn (>=0.13) is required for this plot but could not be "
+            "imported. Older seaborn versions are incompatible with "
+            "matplotlib >= 3.9 (register_cmap removal). "
+            "Fix with: pip install -U 'seaborn>=0.13'"
+        )
+
+
 import torch
 import yaml
 
@@ -381,7 +401,8 @@ def generate_statistical_plots(
 ):
     """Generate statistical comparison plots."""
 
-    sns.set_style("whitegrid")
+    if _HAS_SEABORN:
+        sns.set_style("whitegrid")
 
     # Plot 1: Distribution comparison (funding costs)
     fig, ax = plt.subplots(figsize=(12, 6))

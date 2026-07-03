@@ -26,7 +26,7 @@ A research project combining **Variational Quantum Circuits (VQC)** with **Soft 
 │   └── configs/                     # YAML configs (default, environment, sac, qsac)
 ├── scripts/
 │   ├── lint.sh                      # Interactive linting (ruff, flake8, mypy, pylint)
-│   ├── run.sh                       # Single entry point: setup/test/train/evaluate/demo
+│   ├── run.sh                       # Single entry point: test/train/evaluate/demo
 │   ├── setup.py                     # Package installation
 │   └── verify_installation.sh       # End-to-end installation & smoke-test
 ├── Dockerfile                       # Multi-stage Docker build
@@ -44,7 +44,7 @@ The simplest way to use the repository is through the unified run script,
 which handles PYTHONPATH and working directories for you:
 
 ```bash
-bash scripts/run.sh setup        # install dependencies
+pip install -r code/requirements.txt     # install dependencies
 bash scripts/run.sh test         # run the unit test suite (18 tests)
 bash scripts/run.sh demo         # 1-minute smoke run: SAC training + baseline
 bash scripts/run.sh train-sac    # train the classical SAC agent

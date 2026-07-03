@@ -12,6 +12,7 @@ from env.cbdc_env import CBDCLiquidityEnv
 from models.sac_agent import SACAgent
 from tqdm import tqdm
 from training.replay_buffer import ReplayBuffer
+from utils import console as ui
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 _CONFIGS = _ROOT / "infrastructure" / "configs"
@@ -195,16 +196,18 @@ def train_qsac(
 
         # Save final model
         agent.save(str(checkpoint_dir / "qsac_final.pt"))
-        print(
-            f"\nTraining complete! Final model saved to {checkpoint_dir / 'qsac_final.pt'}"
-        )
-
         # Final evaluation
         final_eval_metrics = evaluate(agent, eval_env, n_eval_episodes)
-        print("\nFinal Evaluation:")
         for key, value in final_eval_metrics.items():
-            print(f"  {key}: {value}")
             mlflow.log_metric(f"final/{key}", value)
+        ui.summary_panel(
+            "Q-SAC TRAINING COMPLETE",
+            {
+                str(k): (f"{v:.4f}" if isinstance(v, float) else v)
+                for k, v in final_eval_metrics.items()
+            },
+            footer=f"Model saved to {checkpoint_dir / 'qsac_final.pt'}",
+        )
 
         env.close()
         eval_env.close()

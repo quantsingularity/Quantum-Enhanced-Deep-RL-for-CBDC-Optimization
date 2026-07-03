@@ -19,7 +19,27 @@ if _code_dir not in sys.path:
 # ── Third-party imports ───────────────────────────────────────────────────────
 import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
+
+try:
+    import seaborn as sns
+
+    _HAS_SEABORN = True
+except Exception:  # missing seaborn, or seaborn too old for this matplotlib
+    sns = None
+    _HAS_SEABORN = False
+
+
+def _require_seaborn():
+    """Raise a clear error when a seaborn-based plot is requested."""
+    if not _HAS_SEABORN:
+        raise ImportError(
+            "seaborn (>=0.13) is required for this plot but could not be "
+            "imported. Older seaborn versions are incompatible with "
+            "matplotlib >= 3.9 (register_cmap removal). "
+            "Fix with: pip install -U 'seaborn>=0.13'"
+        )
+
+
 import torch
 import yaml
 
@@ -177,7 +197,9 @@ def run_all_experiments() -> dict:
 
 def generate_comparison_plots(df: pd.DataFrame, plots_dir: Path) -> None:
     """Generate bar-chart comparisons for all metrics present in *df*."""
-    sns.set_style("whitegrid")
+    _require_seaborn()
+    if _HAS_SEABORN:
+        sns.set_style("whitegrid")
     methods = list(df.index)
     n = len(methods)
     palette = sns.color_palette("Set2", n)

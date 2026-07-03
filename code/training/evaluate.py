@@ -10,6 +10,7 @@ import torch
 import yaml
 from env.cbdc_env import CBDCLiquidityEnv
 from models.sac_agent import SACAgent
+from utils import console as ui
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 _CONFIGS = _ROOT / "infrastructure" / "configs"
@@ -198,10 +199,24 @@ def main():
     print(f"\nComparison saved to {results_dir / 'model_comparison.csv'}")
 
     # Print comparison
-    print("\n" + "=" * 80)
-    print("Model Comparison")
-    print("=" * 80)
-    print(comparison_df.to_string())
+    ui.section("C", "Model Comparison")
+    _cols = list(comparison_df.columns)
+    ui.table(
+        ["Model"] + [str(c) for c in _cols],
+        [
+            [str(idx)]
+            + [
+                f"{row[c]:.4f}" if isinstance(row[c], float) else str(row[c])
+                for c in _cols
+            ]
+            for idx, row in comparison_df.iterrows()
+        ],
+    )
+    ui.summary_panel(
+        "EVALUATION COMPLETE",
+        {"Models compared": len(comparison_df), "Metrics": len(_cols)},
+        footer=f"Comparison CSV: {results_dir / 'model_comparison.csv'}",
+    )
 
     return all_results
 

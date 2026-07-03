@@ -6,7 +6,6 @@
 #   bash scripts/run.sh <command> [options]
 #
 # Commands:
-#   setup        Install Python dependencies
 #   test         Run the unit test suite
 #   train-sac    Train the classical SAC agent
 #   train-qsac   Train the quantum-enhanced SAC agent
@@ -14,7 +13,7 @@
 #   evaluate     Evaluate trained models and produce comparison CSV
 #   experiments  Run the full experiment suite (ablations + statistics)
 #   demo         Quick smoke run: short training + baseline evaluation
-#   all          setup -> test -> train-sac -> train-qsac -> evaluate
+#   all          test -> train-sac -> train-qsac -> evaluate
 #
 # Extra arguments after the command are forwarded to the underlying
 # Python entry point, e.g.:
@@ -32,18 +31,13 @@ export PYTHONPATH="$CODE_DIR:${PYTHONPATH:-}"
 PYTHON="${PYTHON:-python3}"
 
 usage() {
-    sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+    awk 'NR>1 && /^# ={10,}/{c++; if(c==2) exit} NR>1{sub(/^# ?/,""); print}' "$0"
 }
 
 cmd="${1:-}"
 shift || true
 
 case "$cmd" in
-    setup)
-        echo "[run.sh] Installing dependencies..."
-        "$PYTHON" -m pip install -r "$CODE_DIR/requirements.txt"
-        ;;
-
     test)
         echo "[run.sh] Running unit tests..."
         cd "$CODE_DIR"
@@ -123,7 +117,6 @@ PY
         ;;
 
     all)
-        bash "$0" setup
         bash "$0" test
         bash "$0" train-sac
         bash "$0" train-qsac

@@ -20,7 +20,27 @@ if _code_dir not in sys.path:
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+
+try:
+    import seaborn as sns
+
+    _HAS_SEABORN = True
+except Exception:  # missing seaborn, or seaborn too old for this matplotlib
+    sns = None
+    _HAS_SEABORN = False
+
+
+def _require_seaborn():
+    """Raise a clear error when a seaborn-based plot is requested."""
+    if not _HAS_SEABORN:
+        raise ImportError(
+            "seaborn (>=0.13) is required for this plot but could not be "
+            "imported. Older seaborn versions are incompatible with "
+            "matplotlib >= 3.9 (register_cmap removal). "
+            "Fix with: pip install -U 'seaborn>=0.13'"
+        )
+
+
 import torch
 import yaml
 
@@ -251,7 +271,9 @@ def evaluate_ablation(
 
 def generate_ablation_plots(df: pd.DataFrame, results_dir: Path) -> None:
     """Generate horizontal bar-chart and heatmap for ablation results."""
-    sns.set_style("whitegrid")
+    _require_seaborn()
+    if _HAS_SEABORN:
+        sns.set_style("whitegrid")
     configs = list(df.index)
     n = len(configs)
     palette = sns.color_palette("RdYlGn", n)

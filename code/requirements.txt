@@ -27,7 +27,7 @@ pyyaml>=6.0
 # Plotting
 # ──────────────────────────────────────────────────────────────────────────────
 matplotlib>=3.7.0
-seaborn>=0.12.0
+seaborn>=0.13  # older versions break on matplotlib>=3.9 (register_cmap removed)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Progress bars
